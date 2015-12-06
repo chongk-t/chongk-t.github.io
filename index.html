@@ -81,6 +81,65 @@
         <header class="article-info clearfix">
   <h1 itemprop="name">
     
+      <a href="/2015/12/06/NewIoTop/" title="如何让iotop显示read/write系统调用次数及系统调用请求数据大小" itemprop="url">如何让iotop显示read/write系统调用次数及系统调用请求数据大小</a>
+  </h1>
+  <p class="article-author">By
+       
+		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
+		
+  <p class="article-time">
+    <time datetime="2015-12-06T15:49:11.234Z" itemprop="datePublished"> 发表于 2015-12-06</time>
+    
+  </p>
+</header>
+    <div class="article-content">
+        
+        <pre><code>最近在忙着优化Hadoop集群。遇到的问题是Disk利用率一直没有达到物理带宽，其他资源也没有出现达到瓶颈的迹象。这让我颇为不爽，决定一探究竟。
+首先使用的工具是iotop。熟悉iotop的同学都知道，iotop执行时在终端顶端出现<span class="keyword">Total</span>/Actual DISK <span class="keyword">READ</span>/WRITE四个值。<span class="keyword">Total</span>与Actual的区别也让我费了一段时间，我的理解是：<span class="keyword">Total</span>值是bio层从<span class="keyword">file</span> cache到ioschedule传递的数据量；Actual是ioschedule到disk的之间的数据量。
+在跟另外一个运行良好的Hadoop集群对比之后我发现这个问题集群的Actual Disk数据有所差距。于是我决定对Syscall层、<span class="keyword">file</span> cache层的数据通量做一个全面的分析。这就要求对iotop的源码做一些小的修改。
+</code></pre><h2 id="iotop的工作原理">iotop的工作原理</h2><pre><code>分析iotop的源码过程让我深刻了解了TaskStats机制。内核Document对TaskStats的描述是：
+</code></pre><p><img src="http://ww2.sinaimg.cn/mw690/79382a93jw1eyqdbunlmij20bu031jrk.jpg" alt="TaskStats"><br>从上面的描述来看，TaskStats是一个用于获得每个进程执行数据的Netlink接口。iotop的源码中也是通过Netlink向TaskStats请求每个进程read_bytes、write_bytes等获得进程的I/O数据从而累加起来得到Total Disk相关数据的（Actual Disk数据则是从/proc/vmstat中的pgpgin及pgpgout获得）。<br>    于是我分析了内核对于TaskStats的定义，看看是否有对I/O系统调用次数及系统调用数据量累积相关统计。运气还不错，内核对TaskStats的定义如下：<br><img src="http://ww4.sinaimg.cn/mw690/79382a93jw1eyqdbufrxhj20e3051aaq.jpg" alt="TaskStats-Define"><br>从上面定义我们看到了read/write_char及read/write_syscalls几个统计变量，从内核的描述可以看出这就是对系统调用请求数据量以及系统调用次数的统计。这让我们想让iotop输出这两个信息的希望成为了可能。</p>
+<h2 id="对iotop稍作修改">对iotop稍作修改</h2><pre><code>接下来我们看看iotop对于从TaskStats请求返回的数据的处理方式。在代码中我看到了一个数据结构来记录返回数据偏移对应的内容相得情况。这就非常明了了，iotop请求返回的就是TaskStats的结构。于是我们照葫芦画瓢，在结构中添加了几项，获取想要的<span class="built_in">i</span>/o信息。修改后结构如下：
+</code></pre><p><img src="http://ww2.sinaimg.cn/mw690/79382a93jw1eyqdbttfw3j20ag05w0t5.jpg" alt="code-add"><br>剩下的修改就是修改一些累计方式以及显示方式了，这就没有必要详述了。</p>
+<h2 id="最终效果">最终效果</h2><pre><code>修改之后的最终效果当然就是newiotop能够显示<span class="keyword">read</span>/<span class="keyword">write</span> <span class="keyword">syscall</span>的数目及<span class="keyword">syscall</span>请求的数据量了。如下图所示：
+</code></pre><p><img src="http://ww4.sinaimg.cn/mw690/79382a93jw1eyqdcqcsenj212404ejsq.jpg" alt="ui"></p>
+<p><strong>如果有同学需要使用这些代码我很乐意分享给大家，请不要犹豫邮件、微博等跟我联系</strong></p>
+
+        
+        
+        <p class="article-more-link">
+          
+       </p>
+    </div>
+    <footer class="article-footer clearfix">
+<div class="article-catetags">
+
+
+</div>
+
+
+
+
+<div class="comments-count">
+	
+</div>
+
+</footer>
+
+
+    </article>
+
+
+
+
+
+
+   
+    
+    <article class="post-expand post" itemprop="articleBody"> 
+        <header class="article-info clearfix">
+  <h1 itemprop="name">
+    
       <a href="/2015/12/06/我对技术博客的理解/" title="我对技术博客的理解" itemprop="url">我对技术博客的理解</a>
   </h1>
   <p class="article-author">By
@@ -139,7 +198,7 @@
   
   <div class="archiveslist">
     <p class="asidetitle"><a href="/archives">归档</a></p>
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">1</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">2</span></li></ul>
   </div>
 
 
