@@ -4,26 +4,26 @@
 <head>
   <meta charset="UTF-8">
   
-    <title>我对技术博客的理解 | Coding Thoughts</title>
+    <title>HiBench的一个Bug-SSH Banner惹的祸 | Coding Thoughts</title>
     <meta name="viewport" content="width=device-width, initial-scale=1,user-scalable=no">
     
     <meta name="author" content="Chongk-t">
     
 
     
-    <meta name="description" content="互联网公司的工作是技术驱动的。互联网公司的高速运转给我们提供了很多深入的机会，每天的工作都能接触到错综复杂的技术，当你越是深入、越是踏实时，你接触的技术就越是细、越是复杂。一直就打算写博客。以前没毕业时也写过一些，终究没有坚持下来。一个重要的原因当时接触的东西比较简单，不够深入就不好意思分享。想法虽然简单，却也情有可原。博客，是跟自己在说话。无须矫情，也无法虚假。希望我的思考能够帮助其他人。
-博客">
+    <meta name="description" content="今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。
+好吧，习惯了修修补补，让我们看看又有哪些问题。HiBench的监控脚本最终会走到monitor.py, __main__函数走下发现输出">
 <meta property="og:type" content="article">
-<meta property="og:title" content="我对技术博客的理解">
-<meta property="og:url" content="http://chongk-t.github.io/2015/12/06/我对技术博客的理解/index.html">
+<meta property="og:title" content="HiBench的一个Bug-SSH Banner惹的祸">
+<meta property="og:url" content="http://chongk-t.github.io/2015/12/07/HiBench-SSH-Banner-Issue/index.html">
 <meta property="og:site_name" content="Coding Thoughts">
-<meta property="og:description" content="互联网公司的工作是技术驱动的。互联网公司的高速运转给我们提供了很多深入的机会，每天的工作都能接触到错综复杂的技术，当你越是深入、越是踏实时，你接触的技术就越是细、越是复杂。一直就打算写博客。以前没毕业时也写过一些，终究没有坚持下来。一个重要的原因当时接触的东西比较简单，不够深入就不好意思分享。想法虽然简单，却也情有可原。博客，是跟自己在说话。无须矫情，也无法虚假。希望我的思考能够帮助其他人。
-博客">
-<meta property="og:updated_time" content="2015-12-06T14:11:14.438Z">
+<meta property="og:description" content="今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。
+好吧，习惯了修修补补，让我们看看又有哪些问题。HiBench的监控脚本最终会走到monitor.py, __main__函数走下发现输出">
+<meta property="og:updated_time" content="2015-12-07T15:14:14.350Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="我对技术博客的理解">
-<meta name="twitter:description" content="互联网公司的工作是技术驱动的。互联网公司的高速运转给我们提供了很多深入的机会，每天的工作都能接触到错综复杂的技术，当你越是深入、越是踏实时，你接触的技术就越是细、越是复杂。一直就打算写博客。以前没毕业时也写过一些，终究没有坚持下来。一个重要的原因当时接触的东西比较简单，不够深入就不好意思分享。想法虽然简单，却也情有可原。博客，是跟自己在说话。无须矫情，也无法虚假。希望我的思考能够帮助其他人。
-博客">
+<meta name="twitter:title" content="HiBench的一个Bug-SSH Banner惹的祸">
+<meta name="twitter:description" content="今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。
+好吧，习惯了修修补补，让我们看看又有哪些问题。HiBench的监控脚本最终会走到monitor.py, __main__函数走下发现输出">
 
     
     <link rel="alternative" href="/atom.xml" title="Coding Thoughts" type="application/atom+xml">
@@ -83,14 +83,14 @@
 		<header class="article-info clearfix">
   <h1 itemprop="name">
     
-      <a href="/2015/12/06/我对技术博客的理解/" title="我对技术博客的理解" itemprop="url">我对技术博客的理解</a>
+      <a href="/2015/12/07/HiBench-SSH-Banner-Issue/" title="HiBench的一个Bug-SSH Banner惹的祸" itemprop="url">HiBench的一个Bug-SSH Banner惹的祸</a>
   </h1>
   <p class="article-author">By
        
 		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
 		
   <p class="article-time">
-    <time datetime="2015-12-06T14:11:14.438Z" itemprop="datePublished"> 发表于 2015-12-06</time>
+    <time datetime="2015-12-07T15:14:14.350Z" itemprop="datePublished"> 发表于 2015-12-07</time>
     
   </p>
 </header>
@@ -99,14 +99,14 @@
 		<div id="toc" class="toc-article">
 			<strong class="toc-title">文章目录</strong>
 		
-			<ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#博客文章的三个功能"><span class="toc-number">1.</span> <span class="toc-text">博客文章的三个功能</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#审视技术的扎实程度"><span class="toc-number">1.1.</span> <span class="toc-text">审视技术的扎实程度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#希望能够帮助他人"><span class="toc-number">1.2.</span> <span class="toc-text">希望能够帮助他人</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#备忘"><span class="toc-number">1.3.</span> <span class="toc-text">备忘</span></a></li></ol></li></ol>
+			
 		
 		</div>
 		
-		<p>互联网公司的工作是技术驱动的。互联网公司的高速运转给我们提供了很多深入的机会，每天的工作都能接触到错综复杂的技术，当你越是深入、越是踏实时，你接触的技术就越是细、越是复杂。<br>一直就打算写博客。以前没毕业时也写过一些，终究没有坚持下来。一个重要的原因当时接触的东西比较简单，不够深入就不好意思分享。想法虽然简单，却也情有可原。<br>博客，是跟自己在说话。无须矫情，也无法虚假。<br>希望我的思考能够帮助其他人。</p>
-<h2 id="博客文章的三个功能">博客文章的三个功能</h2><h3 id="审视技术的扎实程度">审视技术的扎实程度</h3><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">写作促进思考。通过文字的表达带动自己对技术的审视-故事是否完整、脉络是否清晰等。</span><br><span class="line">一个完整的技术故事，对于技术的提升大有裨益。</span><br></pre></td></tr></table></figure>
-<h3 id="希望能够帮助他人">希望能够帮助他人</h3><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">技术是开放的。我自己深受其害的坑不希望其他人再踩一次。我也非常感激之前让我跳过很多坑的博主们。</span><br></pre></td></tr></table></figure>
-<h3 id="备忘">备忘</h3><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">除非填坑过程坎坷，很多技术细节很容易忘记。博客就像一条走过的路，偶尔回首总能温故知新。</span><br></pre></td></tr></table></figure>
+		<p>今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。</p>
+<p>好吧，习惯了修修补补，让我们看看又有哪些问题。<br>HiBench的监控脚本最终会走到<strong>monitor.py</strong>, __main__函数走下发现输出被丢了，难怪被坑得无影无踪。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">os.close(<span class="number">0</span>)</span><br><span class="line">os.close(<span class="number">1</span>)</span><br><span class="line">os.close(<span class="number">2</span>)</span><br></pre></td></tr></table></figure></p>
+<p>把这几行注释掉，Bug现出了原形：Int类型转换Exception，“Enjoy~ 无法转换成Int”。<br>忽然想起公司同事有用SSH Banner做标记的情形，跟“在此撒泡尿，这段时间这个服务器归我”差不多。这个倒霉的服务器就被标上了<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Enjoy~</span><br></pre></td></tr></table></figure></p>
+<p>仔细看了一眼发现原来HiBench使用SSH登录的时间戳作为记录时间，默认SSH登录时返回的就是登录时间，没想到一个Banner被我给撞上了。<br>好吧，向HiBench git上提交一个<a href="https://github.com/intel-hadoop/HiBench/issues/161" target="_blank" rel="external">issue</a>，patch就让他们自己打吧，我太懒了。</p>
   
 	</div>
 		<footer class="article-footer clearfix">
@@ -119,7 +119,7 @@
 
 	<div class="article-share" id="share">
 	
-	  <div data-url="http://chongk-t.github.io/2015/12/06/我对技术博客的理解/" data-title="我对技术博客的理解 | Coding Thoughts" data-tsina="null" class="share clearfix">
+	  <div data-url="http://chongk-t.github.io/2015/12/07/HiBench-SSH-Banner-Issue/" data-title="HiBench的一个Bug-SSH Banner惹的祸 | Coding Thoughts" data-tsina="null" class="share clearfix">
 	  </div>
 	
 	</div>
@@ -132,14 +132,14 @@
 	
 <nav class="article-nav clearfix">
  
- <div class="prev" >
- <a href="/2015/12/06/NewIoTop/" title="如何让iotop显示read/write系统调用次数及系统调用请求数据大小">
-  <strong>上一篇：</strong><br/>
-  <span>
-  如何让iotop显示read/write系统调用次数及系统调用请求数据大小</span>
+
+<div class="next">
+<a href="/2015/12/06/NewIoTop/"  title="如何让iotop显示read/write系统调用次数及系统调用请求数据大小">
+ <strong>下一篇：</strong><br/> 
+ <span>如何让iotop显示read/write系统调用次数及系统调用请求数据大小
+</span>
 </a>
 </div>
-
 
 </nav>
 
@@ -151,7 +151,7 @@
   <div id="toc" class="toc-aside">
   <strong class="toc-title">文章目录</strong>
  
- <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#博客文章的三个功能"><span class="toc-number">1.</span> <span class="toc-text">博客文章的三个功能</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#审视技术的扎实程度"><span class="toc-number">1.1.</span> <span class="toc-text">审视技术的扎实程度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#希望能够帮助他人"><span class="toc-number">1.2.</span> <span class="toc-text">希望能够帮助他人</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#备忘"><span class="toc-number">1.3.</span> <span class="toc-text">备忘</span></a></li></ol></li></ol>
+ 
  
   </div>
 

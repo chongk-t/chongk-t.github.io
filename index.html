@@ -81,6 +81,59 @@
         <header class="article-info clearfix">
   <h1 itemprop="name">
     
+      <a href="/2015/12/07/HiBench-SSH-Banner-Issue/" title="HiBench的一个Bug-SSH Banner惹的祸" itemprop="url">HiBench的一个Bug-SSH Banner惹的祸</a>
+  </h1>
+  <p class="article-author">By
+       
+		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
+		
+  <p class="article-time">
+    <time datetime="2015-12-07T15:14:14.350Z" itemprop="datePublished"> 发表于 2015-12-07</time>
+    
+  </p>
+</header>
+    <div class="article-content">
+        
+        <p>今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。</p>
+<p>好吧，习惯了修修补补，让我们看看又有哪些问题。<br>HiBench的监控脚本最终会走到<strong>monitor.py</strong>, __main__函数走下发现输出被丢了，难怪被坑得无影无踪。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">os.close(<span class="number">0</span>)</span><br><span class="line">os.close(<span class="number">1</span>)</span><br><span class="line">os.close(<span class="number">2</span>)</span><br></pre></td></tr></table></figure></p>
+<p>把这几行注释掉，Bug现出了原形：Int类型转换Exception，“Enjoy~ 无法转换成Int”。<br>忽然想起公司同事有用SSH Banner做标记的情形，跟“在此撒泡尿，这段时间这个服务器归我”差不多。这个倒霉的服务器就被标上了<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Enjoy~</span><br></pre></td></tr></table></figure></p>
+<p>仔细看了一眼发现原来HiBench使用SSH登录的时间戳作为记录时间，默认SSH登录时返回的就是登录时间，没想到一个Banner被我给撞上了。<br>好吧，向HiBench git上提交一个<a href="https://github.com/intel-hadoop/HiBench/issues/161" target="_blank" rel="external">issue</a>，patch就让他们自己打吧，我太懒了。</p>
+
+        
+        
+        <p class="article-more-link">
+          
+       </p>
+    </div>
+    <footer class="article-footer clearfix">
+<div class="article-catetags">
+
+
+</div>
+
+
+
+
+<div class="comments-count">
+	
+</div>
+
+</footer>
+
+
+    </article>
+
+
+
+
+
+
+   
+    
+    <article class="post-expand post" itemprop="articleBody"> 
+        <header class="article-info clearfix">
+  <h1 itemprop="name">
+    
       <a href="/2015/12/06/NewIoTop/" title="如何让iotop显示read/write系统调用次数及系统调用请求数据大小" itemprop="url">如何让iotop显示read/write系统调用次数及系统调用请求数据大小</a>
   </h1>
   <p class="article-author">By
@@ -198,7 +251,7 @@
   
   <div class="archiveslist">
     <p class="asidetitle"><a href="/archives">归档</a></p>
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">2</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">3</span></li></ul>
   </div>
 
 
