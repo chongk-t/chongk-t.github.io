@@ -4,26 +4,26 @@
 <head>
   <meta charset="UTF-8">
   
-    <title>HiBench的一个Bug-SSH Banner惹的祸 | Coding Thoughts</title>
+    <title>flush线程为何一直在IO | Coding Thoughts</title>
     <meta name="viewport" content="width=device-width, initial-scale=1,user-scalable=no">
     
     <meta name="author" content="Chongk-t">
     
 
     
-    <meta name="description" content="今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。
-好吧，习惯了修修补补，让我们看看又有哪些问题。HiBench的监控脚本最终会走到monitor.py, __main__函数走下发现输出">
+    <meta name="description" content="最近的实验中出现了iotop中观测到flush线程io百分比达到了99.99%。这个现象挺出乎意料的，因为在我的印象中flush进程是不应该有io操作的。所以我首先怀疑的是iotop中对io百分比的计算。
+iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们可以发现如下代码12def delay2percent(delay): # delay in ns, duration">
 <meta property="og:type" content="article">
-<meta property="og:title" content="HiBench的一个Bug-SSH Banner惹的祸">
-<meta property="og:url" content="http://chongk-t.github.io/2015/12/07/HiBench-SSH-Banner-Issue/index.html">
+<meta property="og:title" content="flush线程为何一直在IO">
+<meta property="og:url" content="http://chongk-t.github.io/2015/12/09/flush-high-io/index.html">
 <meta property="og:site_name" content="Coding Thoughts">
-<meta property="og:description" content="今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。
-好吧，习惯了修修补补，让我们看看又有哪些问题。HiBench的监控脚本最终会走到monitor.py, __main__函数走下发现输出">
-<meta property="og:updated_time" content="2015-12-07T15:14:14.350Z">
+<meta property="og:description" content="最近的实验中出现了iotop中观测到flush线程io百分比达到了99.99%。这个现象挺出乎意料的，因为在我的印象中flush进程是不应该有io操作的。所以我首先怀疑的是iotop中对io百分比的计算。
+iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们可以发现如下代码12def delay2percent(delay): # delay in ns, duration">
+<meta property="og:updated_time" content="2015-12-08T16:16:24.465Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="HiBench的一个Bug-SSH Banner惹的祸">
-<meta name="twitter:description" content="今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。
-好吧，习惯了修修补补，让我们看看又有哪些问题。HiBench的监控脚本最终会走到monitor.py, __main__函数走下发现输出">
+<meta name="twitter:title" content="flush线程为何一直在IO">
+<meta name="twitter:description" content="最近的实验中出现了iotop中观测到flush线程io百分比达到了99.99%。这个现象挺出乎意料的，因为在我的印象中flush进程是不应该有io操作的。所以我首先怀疑的是iotop中对io百分比的计算。
+iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们可以发现如下代码12def delay2percent(delay): # delay in ns, duration">
 
     
     <link rel="alternative" href="/atom.xml" title="Coding Thoughts" type="application/atom+xml">
@@ -83,14 +83,14 @@
 		<header class="article-info clearfix">
   <h1 itemprop="name">
     
-      <a href="/2015/12/07/HiBench-SSH-Banner-Issue/" title="HiBench的一个Bug-SSH Banner惹的祸" itemprop="url">HiBench的一个Bug-SSH Banner惹的祸</a>
+      <a href="/2015/12/09/flush-high-io/" title="flush线程为何一直在IO" itemprop="url">flush线程为何一直在IO</a>
   </h1>
   <p class="article-author">By
        
 		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
 		
   <p class="article-time">
-    <time datetime="2015-12-07T15:14:14.350Z" itemprop="datePublished"> 发表于 2015-12-07</time>
+    <time datetime="2015-12-08T16:16:24.465Z" itemprop="datePublished"> 发表于 2015-12-09</time>
     
   </p>
 </header>
@@ -99,14 +99,20 @@
 		<div id="toc" class="toc-article">
 			<strong class="toc-title">文章目录</strong>
 		
-			
+			<ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#iotop中对IO百分比的计算"><span class="toc-number">1.</span> <span class="toc-text">iotop中对IO百分比的计算</span></a></li></ol>
 		
 		</div>
 		
-		<p>今天将HiBench移到了Arm64平台，想看看Arm平台Hadoop的表现。毕竟是Java+Python平台，整个移植过程非常顺利。点杆执行，然后喝咖啡去了。回来一看，report下的monitor.log及monitor.html都没有生成。大呼又踩到坑了。</p>
-<p>好吧，习惯了修修补补，让我们看看又有哪些问题。<br>HiBench的监控脚本最终会走到<strong>monitor.py</strong>, __main__函数走下发现输出被丢了，难怪被坑得无影无踪。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">os.close(<span class="number">0</span>)</span><br><span class="line">os.close(<span class="number">1</span>)</span><br><span class="line">os.close(<span class="number">2</span>)</span><br></pre></td></tr></table></figure></p>
-<p>把这几行注释掉，Bug现出了原形：Int类型转换Exception，“Enjoy~ 无法转换成Int”。<br>忽然想起公司同事有用SSH Banner做标记的情形，跟“在此撒泡尿，这段时间这个服务器归我”差不多。这个倒霉的服务器就被标上了<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Enjoy~</span><br></pre></td></tr></table></figure></p>
-<p>仔细看了一眼发现原来HiBench使用SSH登录的时间戳作为记录时间，默认SSH登录时返回的就是登录时间，没想到一个Banner被我给撞上了。<br>好吧，向HiBench git上提交一个<a href="https://github.com/intel-hadoop/HiBench/issues/161" target="_blank" rel="external">issue</a>，patch就让他们自己打吧，我太懒了。</p>
+		<p>最近的实验中出现了iotop中观测到flush线程io百分比达到了99.99%。这个现象挺出乎意料的，因为在我的印象中flush进程是不应该有io操作的。所以我首先怀疑的是iotop中对io百分比的计算。</p>
+<h3 id="iotop中对IO百分比的计算">iotop中对IO百分比的计算</h3><p>还是回到iotop的代码。在ui.py中，我们可以发现如下代码<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">delay2percent</span><span class="params">(delay)</span>:</span> <span class="comment"># delay in ns, duration in s</span></span><br><span class="line">    <span class="keyword">return</span> <span class="string">'%.2f %%'</span> % min(<span class="number">99.99</span>, delay / (duration * <span class="number">10000000.0</span>))</span><br></pre></td></tr></table></figure></p>
+<p>可见进程的io百分比的计算来自于delay占统计时间（在iotop中为1s）的比值。而delay来自于进程TaskStats的<strong>blkio_delay_total</strong>，内核中具体的定义如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Following four fields atomically updated using task-&gt;delays-&gt;lock */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Delay waiting for synchronous block I/O to complete</span><br><span class="line"> * does not account for delays in I/O submission</span><br><span class="line"> */</span></span><br><span class="line">__u64	blkio_count;</span><br><span class="line">__u64	blkio_delay_total;</span><br></pre></td></tr></table></figure></p>
+<p>内核注释写得很明确了，统计的是同步block I/O的等待时间，并不包括I/O提交延迟。<br>另一个问题是blkio_delay_total是什么时候被统计的？从内核代码中看，blkio_delay_total是由两个函数delayacct_blkio_start组合使用进行统计的。一个典型也是与本问题相关的使用是io_schedule。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __<span class="function">sched <span class="title">io_schedule</span><span class="params">(<span class="keyword">void</span>)</span></span><br><span class="line"></span>&#123;</span><br><span class="line">	<span class="keyword">struct</span> rq *rq = raw_rq();</span><br><span class="line"></span><br><span class="line">	delayacct_blkio_start();</span><br><span class="line">	atomic_inc(&amp;rq-&gt;nr_iowait);</span><br><span class="line">	current-&gt;in_iowait = <span class="number">1</span>;</span><br><span class="line">	schedule();</span><br><span class="line">	current-&gt;in_iowait = <span class="number">0</span>;</span><br><span class="line">	atomic_dec(&amp;rq-&gt;nr_iowait);</span><br><span class="line">	delayacct_blkio_end();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>从上面代码看，在线程io调度之前开始统计，在线程调度回来之后结束统计。因而io百分比表示的是因IO被调度出去的时间占墙钟时间的比例。<br>因而，flush线程这么大io百分比肯定是执行了io操作。</p>
+<p>###flush线程的io操作<br>按照我的理解，flush线程的工作应该是将page cache中的dirty页传递到bio层，期间不会涉及到io操作。不过iotop的结果显然被狠狠地打脸了。跟踪一下代码看看。<br>flush线程在mm/Backing-dev.c文件中被创建：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kthread_run(bdi_start_fn, wb, <span class="string">"flush-%s"</span>,</span><br><span class="line">	dev_name(bdi-&gt;dev))</span><br></pre></td></tr></table></figure></p>
+<p>线程函数穿越VFS接口最终到了ext4的<strong>ext4_da_writepages</strong>函数，这个函数负责最终的脏页write-back操作。整个代码过程看起来都很正常，期间还遇到了ext4的日志线程相关（jdb2)处理：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">handle = ext4_journal_start(inode, needed_blocks);</span><br><span class="line">......</span><br><span class="line">ext4_journal_stop(handle);</span><br><span class="line">......</span><br><span class="line">jbd2_journal_force_commit_nested(sbi-&gt;s_journal);</span><br></pre></td></tr></table></figure></p>
+<p>这也很好理解，更新操作自然涉及到文件系统日志。然而，到以下几行代码时，我有点儿犯迷糊了<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!mpd.io_done &amp;&amp; mpd.next_page != mpd.first_page) &#123;</span><br><span class="line">			<span class="keyword">if</span> (mpage_da_map_blocks(&amp;mpd) == <span class="number">0</span>)</span><br><span class="line">				mpage_da_submit_io(&amp;mpd);</span><br><span class="line">			mpd.io_done = <span class="number">1</span>;</span><br><span class="line">			ret = MPAGE_DA_EXTENT_TAIL;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></p>
+<p>按常理而言，如果io_done未全部完成，继续提交就好了，这个map_blocks有些诡异。跟进去发现，这个mpage_da_map_blocks还涉及到了向磁盘申请Block相关的操作，预感这应该是问题所在了。</p>
+<p>文件系统太复杂了，遇到了不太理解的问题，看看有没有哪位填友能帮我答疑解惑。万能的搜索引擎一搜，发现了<a href="http://m.blog.csdn.net/blog/kai_ding" target="_blank" rel="external">kai_ding</a>的文章<a href="http://m.blog.csdn.net/blog/kai_ding/9914629" target="_blank" rel="external">ext4的延迟分配</a>。好文共分享，我决定将这篇文章转载到我的博客中。<br>从kai_ding的文章中可以看到，ext4提供延迟分配机制：页面在写回时再分配物理磁盘块与之对应。mpage_da_map_blocks()负责分配磁盘页并建立映射关系。<br>这也就解释了为什么flush线程会有这么大的io百分比。但是99.99%的io占比实在是太令人发指了，相当于flush没有时间干正事了。接下来是如何想办法如何解决它。</p>
   
 	</div>
 		<footer class="article-footer clearfix">
@@ -119,7 +125,7 @@
 
 	<div class="article-share" id="share">
 	
-	  <div data-url="http://chongk-t.github.io/2015/12/07/HiBench-SSH-Banner-Issue/" data-title="HiBench的一个Bug-SSH Banner惹的祸 | Coding Thoughts" data-tsina="null" class="share clearfix">
+	  <div data-url="http://chongk-t.github.io/2015/12/09/flush-high-io/" data-title="flush线程为何一直在IO | Coding Thoughts" data-tsina="null" class="share clearfix">
 	  </div>
 	
 	</div>
@@ -133,18 +139,18 @@
 <nav class="article-nav clearfix">
  
  <div class="prev" >
- <a href="/2015/12/09/flush-high-io/" title="flush线程为何一直在IO">
+ <a href="/2015/12/09/R-ext4/" title="转-ext4的延迟分配">
   <strong>上一篇：</strong><br/>
   <span>
-  flush线程为何一直在IO</span>
+  转-ext4的延迟分配</span>
 </a>
 </div>
 
 
 <div class="next">
-<a href="/2015/12/06/NewIoTop/"  title="如何让iotop显示read/write系统调用次数及系统调用请求数据大小">
+<a href="/2015/12/07/HiBench-SSH-Banner-Issue/"  title="HiBench的一个Bug-SSH Banner惹的祸">
  <strong>下一篇：</strong><br/> 
- <span>如何让iotop显示read/write系统调用次数及系统调用请求数据大小
+ <span>HiBench的一个Bug-SSH Banner惹的祸
 </span>
 </a>
 </div>
@@ -159,7 +165,7 @@
   <div id="toc" class="toc-aside">
   <strong class="toc-title">文章目录</strong>
  
- 
+ <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#iotop中对IO百分比的计算"><span class="toc-number">1.</span> <span class="toc-text">iotop中对IO百分比的计算</span></a></li></ol>
  
   </div>
 
