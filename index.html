@@ -88,7 +88,7 @@
 		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
 		
   <p class="article-time">
-    <time datetime="2015-12-08T16:32:54.524Z" itemprop="datePublished"> 发表于 2015-12-09</time>
+    <time datetime="2015-12-08T16:34:45.102Z" itemprop="datePublished"> 发表于 2015-12-09</time>
     
   </p>
 </header>
@@ -103,7 +103,7 @@
 <p>线程函数穿越VFS接口最终到了ext4的<strong>ext4_da_writepages</strong>函数，这个函数负责最终的脏页write-back操作。整个代码过程看起来都很正常，期间还遇到了ext4的日志线程相关（jdb2)处理：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">handle = ext4_journal_start(inode, needed_blocks);</span><br><span class="line">......</span><br><span class="line">ext4_journal_stop(handle);</span><br><span class="line">......</span><br><span class="line">jbd2_journal_force_commit_nested(sbi-&gt;s_journal);</span><br></pre></td></tr></table></figure></p>
 <p>这也很好理解，更新操作自然涉及到文件系统日志。然而，到以下几行代码时，我有点儿犯迷糊了<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!mpd.io_done &amp;&amp; mpd.next_page != mpd.first_page) &#123;</span><br><span class="line">			<span class="keyword">if</span> (mpage_da_map_blocks(&amp;mpd) == <span class="number">0</span>)</span><br><span class="line">				mpage_da_submit_io(&amp;mpd);</span><br><span class="line">			mpd.io_done = <span class="number">1</span>;</span><br><span class="line">			ret = MPAGE_DA_EXTENT_TAIL;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></p>
 <p>按常理而言，如果io_done未全部完成，继续提交就好了，这个map_blocks有些诡异。跟进去发现，这个mpage_da_map_blocks还涉及到了向磁盘申请Block相关的操作，预感这应该是问题所在了。</p>
-<p>文件系统太复杂了，遇到了不太理解的问题，看看有没有哪位填友能帮我答疑解惑。万能的搜索引擎一搜，发现了<a href="http://m.blog.csdn.net/blog/kai_ding" target="_blank" rel="external">kai_ding</a>的文章<a href="http://m.blog.csdn.net/blog/kai_ding/9914629" target="_blank" rel="external">ext4的延迟分配</a>。好文共分享，我决定将i<a href="https://chongk-t.github.io/2015/12/09/R-ext4/">这篇文章</a>转载到我的博客中。<br>从kai_ding的文章中可以看到，ext4提供延迟分配机制：页面在写回时再分配物理磁盘块与之对应。mpage_da_map_blocks()负责分配磁盘页并建立映射关系。<br>这也就解释了为什么flush线程会有这么大的io百分比。但是99.99%的io占比实在是太令人发指了，相当于flush没有时间干正事了。接下来是如何想办法如何解决它。</p>
+<p>文件系统太复杂了，遇到了不太理解的问题，看看有没有哪位填友能帮我答疑解惑。万能的搜索引擎一搜，发现了<a href="http://m.blog.csdn.net/blog/kai_ding" target="_blank" rel="external">kai_ding</a>的文章<a href="http://m.blog.csdn.net/blog/kai_ding/9914629" target="_blank" rel="external">ext4的延迟分配</a>。好文共分享，我决定将<a href="https://chongk-t.github.io/2015/12/09/R-ext4/">这篇文章</a>转载到我的博客中。<br>从kai_ding的文章中可以看到，ext4提供延迟分配机制：页面在写回时再分配物理磁盘块与之对应。mpage_da_map_blocks()负责分配磁盘页并建立映射关系。<br>这也就解释了为什么flush线程会有这么大的io百分比。但是99.99%的io占比实在是太令人发指了，相当于flush没有时间干正事了。接下来是如何想办法如何解决它。</p>
 
         
         
