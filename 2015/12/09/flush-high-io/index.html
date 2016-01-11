@@ -19,7 +19,7 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
 <meta property="og:site_name" content="Coding Thoughts">
 <meta property="og:description" content="最近的实验中出现了iotop中观测到flush线程io百分比达到了99.99%。这个现象挺出乎意料的，因为在我的印象中flush进程是不应该有io操作的。所以我首先怀疑的是iotop中对io百分比的计算。
 iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们可以发现如下代码12def delay2percent(delay): # delay in ns, duration">
-<meta property="og:updated_time" content="2015-12-08T16:34:45.101Z">
+<meta property="og:updated_time" content="2015-12-09T01:46:33.375Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="flush线程为何一直在IO">
 <meta name="twitter:description" content="最近的实验中出现了iotop中观测到flush线程io百分比达到了99.99%。这个现象挺出乎意料的，因为在我的印象中flush进程是不应该有io操作的。所以我首先怀疑的是iotop中对io百分比的计算。
@@ -90,7 +90,7 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
 		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
 		
   <p class="article-time">
-    <time datetime="2015-12-08T16:34:45.102Z" itemprop="datePublished"> 发表于 2015-12-09</time>
+    <time datetime="2015-12-09T01:46:33.375Z" itemprop="datePublished"> 发表于 2015-12-09</time>
     
   </p>
 </header>
@@ -99,7 +99,7 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
 		<div id="toc" class="toc-article">
 			<strong class="toc-title">文章目录</strong>
 		
-			<ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#iotop中对IO百分比的计算"><span class="toc-number">1.</span> <span class="toc-text">iotop中对IO百分比的计算</span></a></li></ol>
+			<ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#iotop中对IO百分比的计算"><span class="toc-number">1.</span> <span class="toc-text">iotop中对IO百分比的计算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#flush线程的io操作"><span class="toc-number">2.</span> <span class="toc-text">flush线程的io操作</span></a></li></ol>
 		
 		</div>
 		
@@ -108,7 +108,7 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
 <p>可见进程的io百分比的计算来自于delay占统计时间（在iotop中为1s）的比值。而delay来自于进程TaskStats的<strong>blkio_delay_total</strong>，内核中具体的定义如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Following four fields atomically updated using task-&gt;delays-&gt;lock */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Delay waiting for synchronous block I/O to complete</span><br><span class="line"> * does not account for delays in I/O submission</span><br><span class="line"> */</span></span><br><span class="line">__u64	blkio_count;</span><br><span class="line">__u64	blkio_delay_total;</span><br></pre></td></tr></table></figure></p>
 <p>内核注释写得很明确了，统计的是同步block I/O的等待时间，并不包括I/O提交延迟。<br>另一个问题是blkio_delay_total是什么时候被统计的？从内核代码中看，blkio_delay_total是由两个函数delayacct_blkio_start组合使用进行统计的。一个典型也是与本问题相关的使用是io_schedule。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __<span class="function">sched <span class="title">io_schedule</span><span class="params">(<span class="keyword">void</span>)</span></span><br><span class="line"></span>&#123;</span><br><span class="line">	<span class="keyword">struct</span> rq *rq = raw_rq();</span><br><span class="line"></span><br><span class="line">	delayacct_blkio_start();</span><br><span class="line">	atomic_inc(&amp;rq-&gt;nr_iowait);</span><br><span class="line">	current-&gt;in_iowait = <span class="number">1</span>;</span><br><span class="line">	schedule();</span><br><span class="line">	current-&gt;in_iowait = <span class="number">0</span>;</span><br><span class="line">	atomic_dec(&amp;rq-&gt;nr_iowait);</span><br><span class="line">	delayacct_blkio_end();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p>从上面代码看，在线程io调度之前开始统计，在线程调度回来之后结束统计。因而io百分比表示的是因IO被调度出去的时间占墙钟时间的比例。<br>因而，flush线程这么大io百分比肯定是执行了io操作。</p>
-<p>###flush线程的io操作<br>按照我的理解，flush线程的工作应该是将page cache中的dirty页传递到bio层，期间不会涉及到io操作。不过iotop的结果显然被狠狠地打脸了。跟踪一下代码看看。<br>flush线程在mm/Backing-dev.c文件中被创建：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kthread_run(bdi_start_fn, wb, <span class="string">"flush-%s"</span>,</span><br><span class="line">	dev_name(bdi-&gt;dev))</span><br></pre></td></tr></table></figure></p>
+<h3 id="flush线程的io操作">flush线程的io操作</h3><p>按照我的理解，flush线程的工作应该是将page cache中的dirty页传递到bio层，期间不会涉及到io操作。不过iotop的结果显然被狠狠地打脸了。跟踪一下代码看看。<br>flush线程在mm/Backing-dev.c文件中被创建：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kthread_run(bdi_start_fn, wb, <span class="string">"flush-%s"</span>,</span><br><span class="line">	dev_name(bdi-&gt;dev))</span><br></pre></td></tr></table></figure></p>
 <p>线程函数穿越VFS接口最终到了ext4的<strong>ext4_da_writepages</strong>函数，这个函数负责最终的脏页write-back操作。整个代码过程看起来都很正常，期间还遇到了ext4的日志线程相关（jdb2)处理：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">handle = ext4_journal_start(inode, needed_blocks);</span><br><span class="line">......</span><br><span class="line">ext4_journal_stop(handle);</span><br><span class="line">......</span><br><span class="line">jbd2_journal_force_commit_nested(sbi-&gt;s_journal);</span><br></pre></td></tr></table></figure></p>
 <p>这也很好理解，更新操作自然涉及到文件系统日志。然而，到以下几行代码时，我有点儿犯迷糊了<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!mpd.io_done &amp;&amp; mpd.next_page != mpd.first_page) &#123;</span><br><span class="line">			<span class="keyword">if</span> (mpage_da_map_blocks(&amp;mpd) == <span class="number">0</span>)</span><br><span class="line">				mpage_da_submit_io(&amp;mpd);</span><br><span class="line">			mpd.io_done = <span class="number">1</span>;</span><br><span class="line">			ret = MPAGE_DA_EXTENT_TAIL;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></p>
 <p>按常理而言，如果io_done未全部完成，继续提交就好了，这个map_blocks有些诡异。跟进去发现，这个mpage_da_map_blocks还涉及到了向磁盘申请Block相关的操作，预感这应该是问题所在了。</p>
@@ -138,6 +138,14 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
 	
 <nav class="article-nav clearfix">
  
+ <div class="prev" >
+ <a href="/2016/01/11/hadoop-rack/" title="hadoop网络拓扑">
+  <strong>上一篇：</strong><br/>
+  <span>
+  hadoop网络拓扑</span>
+</a>
+</div>
+
 
 <div class="next">
 <a href="/2015/12/09/R-ext4/"  title="转-ext4的延迟分配">
@@ -157,7 +165,7 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
   <div id="toc" class="toc-aside">
   <strong class="toc-title">文章目录</strong>
  
- <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#iotop中对IO百分比的计算"><span class="toc-number">1.</span> <span class="toc-text">iotop中对IO百分比的计算</span></a></li></ol>
+ <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#iotop中对IO百分比的计算"><span class="toc-number">1.</span> <span class="toc-text">iotop中对IO百分比的计算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#flush线程的io操作"><span class="toc-number">2.</span> <span class="toc-text">flush线程的io操作</span></a></li></ol>
  
   </div>
 
@@ -168,7 +176,7 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
   
   <div class="archiveslist">
     <p class="asidetitle"><a href="/archives">归档</a></p>
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
   </div>
 
 
@@ -244,7 +252,7 @@ iotop中对IO百分比的计算还是回到iotop的代码。在ui.py中，我们
 		
 
 		<p class="copyright">
-		Powered by <a href="http://hexo.io" target="_blank" title="hexo">hexo</a> and Theme by <a href="https://github.com/wuchong/jacman" target="_blank" title="Jacman">Jacman</a> © 2015 
+		Powered by <a href="http://hexo.io" target="_blank" title="hexo">hexo</a> and Theme by <a href="https://github.com/wuchong/jacman" target="_blank" title="Jacman">Jacman</a> © 2016 
 		
 		<a href="/about" target="_blank" title="Chongk-t">Chongk-t</a>
 		

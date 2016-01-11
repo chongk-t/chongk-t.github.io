@@ -81,6 +81,61 @@
         <header class="article-info clearfix">
   <h1 itemprop="name">
     
+      <a href="/2016/01/11/hadoop-rack/" title="hadoop网络拓扑" itemprop="url">hadoop网络拓扑</a>
+  </h1>
+  <p class="article-author">By
+       
+		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
+		
+  <p class="article-time">
+    <time datetime="2016-01-11T03:02:32.246Z" itemprop="datePublished"> 发表于 2016-01-11</time>
+    
+  </p>
+</header>
+    <div class="article-content">
+        
+        <p>最近忙的一件事是收到来自同事的需求，探索Hadoop的网络支撑环境。于是我决定先看看Hadoop对于网络拓扑的支持情况。</p>
+<h3 id="Hadoop_Rack_Awareness">Hadoop Rack Awareness</h3><p>在Apache的Hadoop文档中有一段对<a href="https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="external">Rack Awareness</a>的介绍。Hadoop会根据Rack的情况进行容错部署，例如至少将一个备份块放置在不同的Rack中。根据Hadoop文档描述，Hadoop中可以使用Java类以及外部脚本两种方式来指定Host到Rack的映射关系。在这里我选择了使用Script的方式。<br>Hadoop对Script based的host到rack映射实现在org.apache.hadoop.net.ScriptBasedMapping类中。我们摘录了其中的一段代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> List&lt;String&gt; <span class="title">resolve</span><span class="params">(List&lt;String&gt; names)</span> </span>&#123;</span><br><span class="line">     List&lt;String&gt; m = <span class="keyword">new</span> ArrayList&lt;String&gt;(names.size());</span><br><span class="line"></span><br><span class="line">     <span class="keyword">if</span> (names.isEmpty()) &#123;</span><br><span class="line">       <span class="keyword">return</span> m;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">if</span> (scriptName == <span class="keyword">null</span>) &#123;</span><br><span class="line">       <span class="keyword">for</span> (String name : names) &#123;</span><br><span class="line">         m.add(NetworkTopology.DEFAULT_RACK);</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">return</span> m;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     String output = runResolveCommand(names, scriptName);</span><br><span class="line">     <span class="keyword">if</span> (output != <span class="keyword">null</span>) &#123;</span><br><span class="line">       StringTokenizer allSwitchInfo = <span class="keyword">new</span> StringTokenizer(output);</span><br><span class="line">       <span class="keyword">while</span> (allSwitchInfo.hasMoreTokens()) &#123;</span><br><span class="line">         String switchInfo = allSwitchInfo.nextToken();</span><br><span class="line">         m.add(switchInfo);</span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure></p>
+<p>从代码中我们可以看出，如果没有指定外部的映射脚本（net.topology.script.file.name）的话，Hadoop将所有的机器设置在DEFAULT_RACK（/default-rack）下；否则，则将以names作为输入获得映射脚本的输出。Hadoop在调用映射脚本时以IP作为输入，输出/rack$n。<br>在我的简单集群中，机器一个分成两个Rack。对于Rack的映射可以简单通过IP地址进行映射，从而得到所属的Rack id。我们将映射Shell脚本放置在Hadoop根目录中，在core-site.xml配置net.topology.script.file.name路径。配置更新到集群所有节点。如果在Shell脚本中加入打印信息，我们可以获得Hadoop集群执行过程中的一些调用信息。通过hadoop dfsadmin -report中报告节点信息上我们可以查看到Hadoop集群节点的Rack信息，同时在namenode的log中也可以看到节点的详细注册信息。</p>
+<h3 id="ScriptBasedMapping调用">ScriptBasedMapping调用</h3><p>我们可以追究一下ScriptBasedMapping的调用关系。通过追踪Hadoop源码我们可以看到，在DataNodeManager的构造函数中有以下代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">this</span>.dnsToSwitchMapping = ReflectionUtils.newInstance(</span><br><span class="line">        conf.getClass(DFSConfigKeys.NET_TOPOLOGY_NODE_SWITCH_MAPPING_IMPL_KEY, </span><br><span class="line">            ScriptBasedMapping.class, DNSToSwitchMapping.class), conf);</span><br></pre></td></tr></table></figure></p>
+<p>yarn的RackResolver中也有一段相同的代码。<br>而我们看conf.getClass的原型可以知道，这段代码首先获得net.topology.node.switch.mapping.impl对应的类，这个类必须实现 DNSToSwitchMapping接口，如果这个类没有配置，这使用默认类ScriptBasedMapping。下面是Hadoop源码中对getClass的描述：<br><figure class="highlight gherkin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">/<span class="keyword">*</span><span class="keyword">*</span> </span><br><span class="line">  <span class="keyword">*</span> Get the value of the <span class="variable">&lt;code&gt;</span>name<span class="variable">&lt;/code&gt;</span> property as a <span class="variable">&lt;code&gt;</span>Class<span class="variable">&lt;/code&gt;</span></span><br><span class="line">  <span class="keyword">*</span> implementing the interface specified by <span class="variable">&lt;code&gt;</span>xface<span class="variable">&lt;/code&gt;</span>.</span><br><span class="line">  <span class="keyword">*</span>   </span><br><span class="line">  <span class="keyword">*</span> If no such property is specified, then <span class="variable">&lt;code&gt;</span>defaultValue<span class="variable">&lt;/code&gt;</span> is </span><br><span class="line">  <span class="keyword">*</span> returned.</span><br><span class="line">  <span class="keyword">*</span> </span><br><span class="line">  <span class="keyword">*</span> An exception is thrown if the returned class does not implement the named</span><br><span class="line">  <span class="keyword">*</span> interface. </span><br><span class="line">  <span class="keyword">*</span> </span><br><span class="line">  <span class="keyword">*</span> <span class="comment">@param name the class name.</span></span><br><span class="line">  <span class="keyword">*</span> <span class="comment">@param defaultValue default value.</span></span><br><span class="line">  <span class="keyword">*</span> <span class="comment">@param xface the interface implemented by the named class.</span></span><br><span class="line">  <span class="keyword">*</span> <span class="comment">@return property value as a &lt;code&gt;Class&lt;/code&gt;, </span></span><br><span class="line">  <span class="keyword">*</span>         or <span class="variable">&lt;code&gt;</span>defaultValue<span class="variable">&lt;/code&gt;</span>.</span><br><span class="line">  <span class="keyword">*</span>/</span><br><span class="line"> public <span class="variable">&lt;U&gt;</span> Class<span class="variable">&lt;? extends U&gt;</span> getClass(String name, </span><br><span class="line">                                        Class<span class="variable">&lt;? extends U&gt;</span> defaultValue, </span><br><span class="line">                                        Class<span class="variable">&lt;U&gt;</span> xface) &#123;</span><br></pre></td></tr></table></figure></p>
+<p>通过上面的代码分析我们可以得到以下两点：<br>1、Rackawareness在Hdfs以及Yarn中使用，用于数据及Container的分配指导；<br>2、Rackawareness首先判断java类实现是否存在，如果不存在再使用ScriptBasedMapping。</p>
+
+        
+        
+        <p class="article-more-link">
+          
+       </p>
+    </div>
+    <footer class="article-footer clearfix">
+<div class="article-catetags">
+
+
+</div>
+
+
+
+
+<div class="comments-count">
+	
+</div>
+
+</footer>
+
+
+    </article>
+
+
+
+
+
+
+   
+    
+    <article class="post-expand post" itemprop="articleBody"> 
+        <header class="article-info clearfix">
+  <h1 itemprop="name">
+    
       <a href="/2015/12/09/flush-high-io/" title="flush线程为何一直在IO" itemprop="url">flush线程为何一直在IO</a>
   </h1>
   <p class="article-author">By
@@ -88,7 +143,7 @@
 		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
 		
   <p class="article-time">
-    <time datetime="2015-12-08T16:34:45.102Z" itemprop="datePublished"> 发表于 2015-12-09</time>
+    <time datetime="2015-12-09T01:46:33.375Z" itemprop="datePublished"> 发表于 2015-12-09</time>
     
   </p>
 </header>
@@ -99,7 +154,7 @@
 <p>可见进程的io百分比的计算来自于delay占统计时间（在iotop中为1s）的比值。而delay来自于进程TaskStats的<strong>blkio_delay_total</strong>，内核中具体的定义如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Following four fields atomically updated using task-&gt;delays-&gt;lock */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Delay waiting for synchronous block I/O to complete</span><br><span class="line"> * does not account for delays in I/O submission</span><br><span class="line"> */</span></span><br><span class="line">__u64	blkio_count;</span><br><span class="line">__u64	blkio_delay_total;</span><br></pre></td></tr></table></figure></p>
 <p>内核注释写得很明确了，统计的是同步block I/O的等待时间，并不包括I/O提交延迟。<br>另一个问题是blkio_delay_total是什么时候被统计的？从内核代码中看，blkio_delay_total是由两个函数delayacct_blkio_start组合使用进行统计的。一个典型也是与本问题相关的使用是io_schedule。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __<span class="function">sched <span class="title">io_schedule</span><span class="params">(<span class="keyword">void</span>)</span></span><br><span class="line"></span>&#123;</span><br><span class="line">	<span class="keyword">struct</span> rq *rq = raw_rq();</span><br><span class="line"></span><br><span class="line">	delayacct_blkio_start();</span><br><span class="line">	atomic_inc(&amp;rq-&gt;nr_iowait);</span><br><span class="line">	current-&gt;in_iowait = <span class="number">1</span>;</span><br><span class="line">	schedule();</span><br><span class="line">	current-&gt;in_iowait = <span class="number">0</span>;</span><br><span class="line">	atomic_dec(&amp;rq-&gt;nr_iowait);</span><br><span class="line">	delayacct_blkio_end();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p>从上面代码看，在线程io调度之前开始统计，在线程调度回来之后结束统计。因而io百分比表示的是因IO被调度出去的时间占墙钟时间的比例。<br>因而，flush线程这么大io百分比肯定是执行了io操作。</p>
-<p>###flush线程的io操作<br>按照我的理解，flush线程的工作应该是将page cache中的dirty页传递到bio层，期间不会涉及到io操作。不过iotop的结果显然被狠狠地打脸了。跟踪一下代码看看。<br>flush线程在mm/Backing-dev.c文件中被创建：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kthread_run(bdi_start_fn, wb, <span class="string">"flush-%s"</span>,</span><br><span class="line">	dev_name(bdi-&gt;dev))</span><br></pre></td></tr></table></figure></p>
+<h3 id="flush线程的io操作">flush线程的io操作</h3><p>按照我的理解，flush线程的工作应该是将page cache中的dirty页传递到bio层，期间不会涉及到io操作。不过iotop的结果显然被狠狠地打脸了。跟踪一下代码看看。<br>flush线程在mm/Backing-dev.c文件中被创建：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kthread_run(bdi_start_fn, wb, <span class="string">"flush-%s"</span>,</span><br><span class="line">	dev_name(bdi-&gt;dev))</span><br></pre></td></tr></table></figure></p>
 <p>线程函数穿越VFS接口最终到了ext4的<strong>ext4_da_writepages</strong>函数，这个函数负责最终的脏页write-back操作。整个代码过程看起来都很正常，期间还遇到了ext4的日志线程相关（jdb2)处理：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">handle = ext4_journal_start(inode, needed_blocks);</span><br><span class="line">......</span><br><span class="line">ext4_journal_stop(handle);</span><br><span class="line">......</span><br><span class="line">jbd2_journal_force_commit_nested(sbi-&gt;s_journal);</span><br></pre></td></tr></table></figure></p>
 <p>这也很好理解，更新操作自然涉及到文件系统日志。然而，到以下几行代码时，我有点儿犯迷糊了<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!mpd.io_done &amp;&amp; mpd.next_page != mpd.first_page) &#123;</span><br><span class="line">			<span class="keyword">if</span> (mpage_da_map_blocks(&amp;mpd) == <span class="number">0</span>)</span><br><span class="line">				mpage_da_submit_io(&amp;mpd);</span><br><span class="line">			mpd.io_done = <span class="number">1</span>;</span><br><span class="line">			ret = MPAGE_DA_EXTENT_TAIL;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></p>
 <p>按常理而言，如果io_done未全部完成，继续提交就好了，这个map_blocks有些诡异。跟进去发现，这个mpage_da_map_blocks还涉及到了向磁盘申请Block相关的操作，预感这应该是问题所在了。</p>
@@ -366,7 +421,7 @@
   
   <div class="archiveslist">
     <p class="asidetitle"><a href="/archives">归档</a></p>
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
   </div>
 
 
@@ -442,7 +497,7 @@
 		
 
 		<p class="copyright">
-		Powered by <a href="http://hexo.io" target="_blank" title="hexo">hexo</a> and Theme by <a href="https://github.com/wuchong/jacman" target="_blank" title="Jacman">Jacman</a> © 2015 
+		Powered by <a href="http://hexo.io" target="_blank" title="hexo">hexo</a> and Theme by <a href="https://github.com/wuchong/jacman" target="_blank" title="Jacman">Jacman</a> © 2016 
 		
 		<a href="/about" target="_blank" title="Chongk-t">Chongk-t</a>
 		
