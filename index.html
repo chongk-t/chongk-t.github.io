@@ -81,6 +81,68 @@
         <header class="article-info clearfix">
   <h1 itemprop="name">
     
+      <a href="/2016/01/20/teragen/" title="揭底teragen" itemprop="url">揭底teragen</a>
+  </h1>
+  <p class="article-author">By
+       
+		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
+		
+  <p class="article-time">
+    <time datetime="2016-01-20T13:06:55.541Z" itemprop="datePublished"> 发表于 2016-01-20</time>
+    
+  </p>
+</header>
+    <div class="article-content">
+        
+        <p>昨天跟同事们谈起TeraSort的一些问题，忽然想到TeraGen。之前对TeraGen有一个大概的概念-TeraSort的数据生成器，生成100byte的Record。既然好奇，这次就索性分析一下TeraGen的源码。</p>
+<p>首先来看看TeraGen的启动代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">setNumberOfRows(job, parseHumanLong(args[<span class="number">0</span>]));</span><br><span class="line">Path outputDir = <span class="keyword">new</span> Path(args[<span class="number">1</span>]);</span><br><span class="line">FileOutputFormat.setOutputPath(job, outputDir);</span><br><span class="line">job.setJobName(<span class="string">"TeraGen"</span>);</span><br><span class="line">job.setJarByClass(TeraGen.class);</span><br><span class="line">job.setMapperClass(SortGenMapper.class);</span><br><span class="line">job.setNumReduceTasks(<span class="number">0</span>);</span><br><span class="line">job.setOutputKeyClass(Text.class);</span><br><span class="line">job.setOutputValueClass(Text.class);</span><br><span class="line">job.setInputFormatClass(RangeInputFormat.class);</span><br><span class="line">job.setOutputFormatClass(TeraOutputFormat.class);</span><br><span class="line"><span class="keyword">return</span> job.waitForCompletion(<span class="keyword">true</span>) ? <span class="number">0</span> : <span class="number">1</span>;</span><br></pre></td></tr></table></figure></p>
+<p>TeraGen的输入一共有两个，num rows以及 output dir。从上面初始化代码部分可以看到，TeraGen使用的map类是SortGenMapper，不需要Reduce阶段，InputFormat类是RangeInputFormat，OutputFormat类是TeraOutputFormat。</p>
+<p>首先，我们分析Map阶段的输入。根据MapReduce程序的执行流程，在Map阶段之前系统将首先分析输入文件，计算Split等，因而我们先看RangeInputFormat类：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> List&lt;InputSplit&gt; <span class="title">getSplits</span><span class="params">(JobContext job)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">long</span> totalRows = getNumberOfRows(job);</span><br><span class="line">      <span class="keyword">int</span> numSplits = job.getConfiguration().getInt(MRJobConfig.NUM_MAPS, <span class="number">1</span>);</span><br><span class="line">      LOG.info(<span class="string">"Generating "</span> + totalRows + <span class="string">" using "</span> + numSplits);</span><br><span class="line">      List&lt;InputSplit&gt; splits = <span class="keyword">new</span> ArrayList&lt;InputSplit&gt;();</span><br><span class="line">      <span class="keyword">long</span> currentRow = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">for</span>(<span class="keyword">int</span> split = <span class="number">0</span>; split &lt; numSplits; ++split) &#123;</span><br><span class="line">        <span class="keyword">long</span> goal = </span><br><span class="line">          (<span class="keyword">long</span>) Math.ceil(totalRows * (<span class="keyword">double</span>)(split + <span class="number">1</span>) / numSplits);</span><br><span class="line">        splits.add(<span class="keyword">new</span> RangeInputSplit(currentRow, goal - currentRow));</span><br><span class="line">        currentRow = goal;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> splits;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></p>
+<p>先看getSplits方法，该方法由Hadoop框架调用，获得split的描述数组，每个split将对应一个map任务。从上面的代码可以看出，numSplits由NUM_MAPS输入项确定，初次之外生成数据总行数也由配置输入。对于每一个Split，函数中计算Split的初始值以及行数。也就是说，每个Map需要产生数据的开始行以及行数都由Split中保存好了。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">map</span><span class="params">(LongWritable row, NullWritable ignored,</span><br><span class="line">        Context context)</span> <span class="keyword">throws</span> IOException, InterruptedException </span>&#123;</span><br><span class="line">      <span class="keyword">if</span> (rand == <span class="keyword">null</span>) &#123;</span><br><span class="line">        rowId = <span class="keyword">new</span> Unsigned16(row.get());</span><br><span class="line">        rand = Random16.skipAhead(rowId);</span><br><span class="line">        checksumCounter = context.getCounter(Counters.CHECKSUM);</span><br><span class="line">      &#125;</span><br><span class="line">      Random16.nextRand(rand);</span><br><span class="line">      GenSort.generateRecord(buffer, rand, rowId);</span><br><span class="line">      key.set(buffer, <span class="number">0</span>, TeraInputFormat.KEY_LENGTH);</span><br><span class="line">      value.set(buffer, TeraInputFormat.KEY_LENGTH, </span><br><span class="line">                TeraInputFormat.VALUE_LENGTH);</span><br><span class="line">      context.write(key, value);</span><br><span class="line">      crc32.reset();</span><br><span class="line">      crc32.update(buffer, <span class="number">0</span>, </span><br><span class="line">                   TeraInputFormat.KEY_LENGTH + TeraInputFormat.VALUE_LENGTH);</span><br><span class="line">      checksum.set(crc32.getValue());</span><br><span class="line">      total.add(checksum);</span><br><span class="line">      rowId.add(ONE);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>我们再看看map函数。按照Hadoop的执行流程，框架通过haveNextValue和getCurrentKey从RecordReader中获取输入，并传递给map函数。从TeraGen源码中的RangeRecordReader我们可以知道，getCurrentKey返回的就是当前的Row号。从Map函数可知，map使用rowid生成一个100字节的数据保存在Buffer中，并以10字节为key、90字节为value的形式写入到Context中。<br>在Hadoop中，当Reduce数设置为0时，map的输出将通过配置输出方式输出，在TeraGen中将使用TeraOutputFormat输出。我们看看这个输出类中的实现。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">TeraRecordWriter</span> <span class="keyword">extends</span> <span class="title">RecordWriter</span>&lt;<span class="title">Text</span>,<span class="title">Text</span>&gt; </span>&#123;</span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">boolean</span> finalSync = <span class="keyword">false</span>;</span><br><span class="line">  <span class="keyword">private</span> FSDataOutputStream out;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="title">TeraRecordWriter</span><span class="params">(FSDataOutputStream out,</span><br><span class="line">                          JobContext job)</span> </span>&#123;</span><br><span class="line">    finalSync = getFinalSync(job);</span><br><span class="line">    <span class="keyword">this</span>.out = out;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">write</span><span class="params">(Text key, </span><br><span class="line">                                 Text value)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    out.write(key.getBytes(), <span class="number">0</span>, key.getLength());</span><br><span class="line">    out.write(value.getBytes(), <span class="number">0</span>, value.getLength());</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">close</span><span class="params">(TaskAttemptContext context)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (finalSync) &#123;</span><br><span class="line">      out.sync();</span><br><span class="line">    &#125;</span><br><span class="line">    out.close();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>我们可以看到，最终Map结束以后数据以先Key后Value的形式写入到HDFS。</p>
+<p>按照Hadoop的框架，map函数将key/value对输出到Sort缓冲区中，当缓冲区满时spill线程按照key对数据进行排序，并输出到磁盘。至此，TeraGen的整个数据生成过程理清了。</p>
+<p>现在还有一个问题，在计算TeraGen的进度时，是否会包括HDFS的操作时间？当任务进度为100%，是最后一个key/value对刚刚写入Context还是所有的数据都已经写入到HDFS？这个问题我们将在之后继续探究。</p>
+
+        
+        
+        <p class="article-more-link">
+          
+       </p>
+    </div>
+    <footer class="article-footer clearfix">
+<div class="article-catetags">
+
+
+</div>
+
+
+
+
+<div class="comments-count">
+	
+	  	<span></span>
+		<a href="/2016/01/20/teragen/#disqus_thread" class="comments-count-link">Comments</a>
+	
+</div>
+
+</footer>
+
+
+    </article>
+
+
+
+
+
+
+   
+    
+    <article class="post-expand post" itemprop="articleBody"> 
+        <header class="article-info clearfix">
+  <h1 itemprop="name">
+    
       <a href="/2016/01/11/hadoop-rack/" title="hadoop网络拓扑" itemprop="url">hadoop网络拓扑</a>
   </h1>
   <p class="article-author">By
@@ -439,7 +501,7 @@
   
   <div class="archiveslist">
     <p class="asidetitle"><a href="/archives">归档</a></p>
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
   </div>
 
 
