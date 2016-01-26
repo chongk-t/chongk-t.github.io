@@ -81,6 +81,64 @@
         <header class="article-info clearfix">
   <h1 itemprop="name">
     
+      <a href="/2016/01/26/chroot/" title="" itemprop="url"></a>
+  </h1>
+  <p class="article-author">By
+       
+		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
+		
+  <p class="article-time">
+    <time datetime="2016-01-26T08:56:44.316Z" itemprop="datePublished"> 发表于 2016-01-26</time>
+    
+  </p>
+</header>
+    <div class="article-content">
+        
+        <h1 id="聊聊chroot">聊聊chroot</h1><hr>
+<p>这里有一篇很棒的<a href="http://www.ibm.com/developerworks/cn/linux/l-cn-chroot/index.html" target="_blank" rel="external">文章</a>关于chroot如何使用。</p>
+<p>其实在Linux的源码(2.6.32)中，最后一部分是使用到了Chroot的。我们知道，Linux内核在启动过程中，完成了内存、cpu等等最基础资源的的初始化之后将要挂载Initrd，然后执行Initrd中的一系列命令。当Initrd中的任务执行完之后，Linux将要挂载硬盘文件系统，作为启动后的工作文件系统。这个过程中就使用到了chroot。</p>
+<p>当然chroot对应的root并不是文件系统中的/root目录。我的理解是change root inode。大家知道，对Linux来说，无论是磁盘中的文件、目录都对应着一个inode。那么，文件系统中的数据是如何访问的呢？在Linux中，系统使用一个root inode保存当前文件系统的入口，当然默认情况对应的是文件系统的根目录。当用户需要访问文件系统中的某一个文件时，例如对应的路径是/a/b/c/xx时，Linux对文件路径的解析是从root inode找到a目录对应的inode，再从a目录下对应的inodes中找到目录b对应的inode，层层寻找最终找到xx文件对应的inode。从上面这个过程我们可以看到，root inode作为整个文件访问的入口的作用。</p>
+<p>当我们使用chroot将root inode替换之后，文件系统的入口变成了整个磁盘文件系统的某一个目录时，系统中的文件访问路径自然也有了相应的局限，局限到一个某个目录中，这也就达到了chroot的种种错误隔离之类的效果。</p>
+<p>这里说说我之前的一个疑问。我们之前做了一个多OS系统，每个OS使用宿主OS的一个目录，为了兼容整个应用执行的环境，我们需要将目标OS的文件访问路径进行chroot。其实这个场景在Linux Container中也非常常见。那么问题来了，对于某个系统来说，我们能用符号链接将宿主系统的/bin、/lib、/sbin之类的目录链接到目标系统的工作目录下以共享使用么？<br>答案是不行的。因为符号链接对于Linux来说是一个特殊的文件，里边保存了目标文件的的路径。那么，既然你整个文件系统的路径都已经变了，符号链接中的目录自然也找不到了。<br>这个问题其实使用硬链接就可以解决。硬链接相当于将目标目录的inode挂在本目录下。那么，既然inode都是一样的，系统根据该inode可以找到bin中的文件，访问路径也就没问题了。</p>
+
+        
+        
+        <p class="article-more-link">
+          
+       </p>
+    </div>
+    <footer class="article-footer clearfix">
+<div class="article-catetags">
+
+
+</div>
+
+
+
+
+<div class="comments-count">
+	
+	  	<span></span>
+		<a href="/2016/01/26/chroot/#disqus_thread" class="comments-count-link">Comments</a>
+	
+</div>
+
+</footer>
+
+
+    </article>
+
+
+
+
+
+
+   
+    
+    <article class="post-expand post" itemprop="articleBody"> 
+        <header class="article-info clearfix">
+  <h1 itemprop="name">
+    
       <a href="/2016/01/22/NodeManagerResourceReport/" title="NodeManager资源注册" itemprop="url">NodeManager资源注册</a>
   </h1>
   <p class="article-author">By
@@ -563,7 +621,7 @@
   
   <div class="archiveslist">
     <p class="asidetitle"><a href="/archives">归档</a></p>
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
   </div>
 
 
