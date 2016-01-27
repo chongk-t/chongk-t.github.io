@@ -81,6 +81,65 @@
         <header class="article-info clearfix">
   <h1 itemprop="name">
     
+      <a href="/2016/01/27/TeraSort-output-replication/" title="" itemprop="url"></a>
+  </h1>
+  <p class="article-author">By
+       
+		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
+		
+  <p class="article-time">
+    <time datetime="2016-01-27T02:40:16.726Z" itemprop="datePublished"> 发表于 2016-01-27</time>
+    
+  </p>
+</header>
+    <div class="article-content">
+        
+        <h1 id="Terasort_output_replication">Terasort output replication</h1><hr>
+<p>最近一直在关注TeraSort。<br>有时候你非常关注某些东西是却会忽略其他一些很基本的东西。比如TeraSort，我一直很关注如何Map更快、Shuffle更快、Reduce更快，回来却发现有个空白竟然没关注到，着实吓了一跳。</p>
+<p>回归正题。某一天我一抬头，看到了TeraSort的网络性能图，<br><img src="http://ww4.sinaimg.cn/mw690/79382a93jw1f0dun08ep1j20mn07saab.jpg" alt="两头空白"><br>为什么会是两头空白？好吧，Hadoop为Map任务做了Locality Based处理，Map阶段没有网络流量我能理解。然而，Reduce阶段呢？至少TeraSort会将输出数据写入到HDFS的，说好的3备份直接的数据传递产生的网络流量呢？<br>是不是输出文件的3备份除了问题呢？<br>Hadoop提供了hadoop fsck /FILE-PATH  -files -locations -blocks查看文件块的保存地点及路径。通过查看，果然，TeraSort的输出文件块备份为1。</p>
+<p>从代码中找找确认一下。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">job.getConfiguration().setInt(<span class="string">"dfs.replication"</span>, getOutputReplication(job));</span><br><span class="line">    TeraOutputFormat.setFinalSync(job, <span class="keyword">true</span>);</span><br></pre></td></tr></table></figure></p>
+<p>从上面代码可以看到，TeraSort确实更新了dfs.replication设置，而<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">getOutputReplication</span><span class="params">(JobContext job)</span> </span>&#123;</span><br><span class="line">   <span class="keyword">return</span> job.getConfiguration().getInt(OUTPUT_REPLICATION, <span class="number">1</span>);</span><br><span class="line"> &#125;</span><br><span class="line"> ......</span><br><span class="line"> <span class="keyword">static</span> String OUTPUT_REPLICATION = <span class="string">"mapreduce.terasort.output.replication"</span>;</span><br></pre></td></tr></table></figure></p>
+<p>如果mapreduce.terasort.output.replication设置成3从命令行传入，期待的网络流量出来了。<br><img src="http://ww3.sinaimg.cn/mw690/79382a93jw1f0dun0r5cjj20mm07smxk.jpg" alt="找回reduce流量"><br>应该是TeraSort觉得输出数据不重要不需要多备份吧。</p>
+<p>有时候，太关注一些事情时，会让你忽略掉其他的很多信息。</p>
+
+        
+        
+        <p class="article-more-link">
+          
+       </p>
+    </div>
+    <footer class="article-footer clearfix">
+<div class="article-catetags">
+
+
+</div>
+
+
+
+
+<div class="comments-count">
+	
+	  	<span></span>
+		<a href="/2016/01/27/TeraSort-output-replication/#disqus_thread" class="comments-count-link">Comments</a>
+	
+</div>
+
+</footer>
+
+
+    </article>
+
+
+
+
+
+
+   
+    
+    <article class="post-expand post" itemprop="articleBody"> 
+        <header class="article-info clearfix">
+  <h1 itemprop="name">
+    
       <a href="/2016/01/26/chroot/" title="" itemprop="url"></a>
   </h1>
   <p class="article-author">By
@@ -621,7 +680,7 @@
   
   <div class="archiveslist">
     <p class="asidetitle"><a href="/archives">归档</a></p>
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">一月 2016</a><span class="archive-list-count">5</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/12/">十二月 2015</a><span class="archive-list-count">5</span></li></ul>
   </div>
 
 

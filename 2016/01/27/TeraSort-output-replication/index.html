@@ -11,22 +11,24 @@
     
 
     
-    <meta name="description" content="聊聊chroot
-这里有一篇很棒的文章关于chroot如何使用。
-其实在Linux的源码(2.6.32)中，最后一部分是使用到了Chroot的。我们知道，Linux内核在启动过程中，完成了内存、cpu等等最基础资源的的初始化之后将要挂载Initrd，然后执行Initrd中的一系列命令。当Initrd中的任务执行完之后，Linux将要挂载硬盘文件系统，作为启动后的工作文件系统。这个过程中就使用到了c">
+    <meta name="description" content="Terasort output replication
+最近一直在关注TeraSort。有时候你非常关注某些东西是却会忽略其他一些很基本的东西。比如TeraSort，我一直很关注如何Map更快、Shuffle更快、Reduce更快，回来却发现有个空白竟然没关注到，着实吓了一跳。
+回归正题。某一天我一抬头，看到了TeraSort的网络性能图，为什么会是两头空白？好吧，Hadoop为Map任务做了Lo">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Coding Thoughts">
-<meta property="og:url" content="http://chongk-t.github.io/2016/01/26/chroot/index.html">
+<meta property="og:url" content="http://chongk-t.github.io/2016/01/27/TeraSort-output-replication/index.html">
 <meta property="og:site_name" content="Coding Thoughts">
-<meta property="og:description" content="聊聊chroot
-这里有一篇很棒的文章关于chroot如何使用。
-其实在Linux的源码(2.6.32)中，最后一部分是使用到了Chroot的。我们知道，Linux内核在启动过程中，完成了内存、cpu等等最基础资源的的初始化之后将要挂载Initrd，然后执行Initrd中的一系列命令。当Initrd中的任务执行完之后，Linux将要挂载硬盘文件系统，作为启动后的工作文件系统。这个过程中就使用到了c">
-<meta property="og:updated_time" content="2016-01-26T08:56:44.315Z">
+<meta property="og:description" content="Terasort output replication
+最近一直在关注TeraSort。有时候你非常关注某些东西是却会忽略其他一些很基本的东西。比如TeraSort，我一直很关注如何Map更快、Shuffle更快、Reduce更快，回来却发现有个空白竟然没关注到，着实吓了一跳。
+回归正题。某一天我一抬头，看到了TeraSort的网络性能图，为什么会是两头空白？好吧，Hadoop为Map任务做了Lo">
+<meta property="og:image" content="http://ww4.sinaimg.cn/mw690/79382a93jw1f0dun08ep1j20mn07saab.jpg">
+<meta property="og:image" content="http://ww3.sinaimg.cn/mw690/79382a93jw1f0dun0r5cjj20mm07smxk.jpg">
+<meta property="og:updated_time" content="2016-01-27T02:40:16.726Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Coding Thoughts">
-<meta name="twitter:description" content="聊聊chroot
-这里有一篇很棒的文章关于chroot如何使用。
-其实在Linux的源码(2.6.32)中，最后一部分是使用到了Chroot的。我们知道，Linux内核在启动过程中，完成了内存、cpu等等最基础资源的的初始化之后将要挂载Initrd，然后执行Initrd中的一系列命令。当Initrd中的任务执行完之后，Linux将要挂载硬盘文件系统，作为启动后的工作文件系统。这个过程中就使用到了c">
+<meta name="twitter:description" content="Terasort output replication
+最近一直在关注TeraSort。有时候你非常关注某些东西是却会忽略其他一些很基本的东西。比如TeraSort，我一直很关注如何Map更快、Shuffle更快、Reduce更快，回来却发现有个空白竟然没关注到，着实吓了一跳。
+回归正题。某一天我一抬头，看到了TeraSort的网络性能图，为什么会是两头空白？好吧，Hadoop为Map任务做了Lo">
 
     
     <link rel="alternative" href="/atom.xml" title="Coding Thoughts" type="application/atom+xml">
@@ -86,14 +88,14 @@
 		<header class="article-info clearfix">
   <h1 itemprop="name">
     
-      <a href="/2016/01/26/chroot/" title="" itemprop="url"></a>
+      <a href="/2016/01/27/TeraSort-output-replication/" title="" itemprop="url"></a>
   </h1>
   <p class="article-author">By
        
 		<a href="/about" title="Chongk-t" target="_blank" itemprop="author">Chongk-t</a>
 		
   <p class="article-time">
-    <time datetime="2016-01-26T08:56:44.316Z" itemprop="datePublished"> 发表于 2016-01-26</time>
+    <time datetime="2016-01-27T02:40:16.726Z" itemprop="datePublished"> 发表于 2016-01-27</time>
     
   </p>
 </header>
@@ -102,16 +104,17 @@
 		<div id="toc" class="toc-article">
 			<strong class="toc-title">文章目录</strong>
 		
-			<ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#聊聊chroot"><span class="toc-number">1.</span> <span class="toc-text">聊聊chroot</span></a></li></ol>
+			<ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Terasort_output_replication"><span class="toc-number">1.</span> <span class="toc-text">Terasort output replication</span></a></li></ol>
 		
 		</div>
 		
-		<h1 id="聊聊chroot">聊聊chroot</h1><hr>
-<p>这里有一篇很棒的<a href="http://www.ibm.com/developerworks/cn/linux/l-cn-chroot/index.html" target="_blank" rel="external">文章</a>关于chroot如何使用。</p>
-<p>其实在Linux的源码(2.6.32)中，最后一部分是使用到了Chroot的。我们知道，Linux内核在启动过程中，完成了内存、cpu等等最基础资源的的初始化之后将要挂载Initrd，然后执行Initrd中的一系列命令。当Initrd中的任务执行完之后，Linux将要挂载硬盘文件系统，作为启动后的工作文件系统。这个过程中就使用到了chroot。</p>
-<p>当然chroot对应的root并不是文件系统中的/root目录。我的理解是change root inode。大家知道，对Linux来说，无论是磁盘中的文件、目录都对应着一个inode。那么，文件系统中的数据是如何访问的呢？在Linux中，系统使用一个root inode保存当前文件系统的入口，当然默认情况对应的是文件系统的根目录。当用户需要访问文件系统中的某一个文件时，例如对应的路径是/a/b/c/xx时，Linux对文件路径的解析是从root inode找到a目录对应的inode，再从a目录下对应的inodes中找到目录b对应的inode，层层寻找最终找到xx文件对应的inode。从上面这个过程我们可以看到，root inode作为整个文件访问的入口的作用。</p>
-<p>当我们使用chroot将root inode替换之后，文件系统的入口变成了整个磁盘文件系统的某一个目录时，系统中的文件访问路径自然也有了相应的局限，局限到一个某个目录中，这也就达到了chroot的种种错误隔离之类的效果。</p>
-<p>这里说说我之前的一个疑问。我们之前做了一个多OS系统，每个OS使用宿主OS的一个目录，为了兼容整个应用执行的环境，我们需要将目标OS的文件访问路径进行chroot。其实这个场景在Linux Container中也非常常见。那么问题来了，对于某个系统来说，我们能用符号链接将宿主系统的/bin、/lib、/sbin之类的目录链接到目标系统的工作目录下以共享使用么？<br>答案是不行的。因为符号链接对于Linux来说是一个特殊的文件，里边保存了目标文件的的路径。那么，既然你整个文件系统的路径都已经变了，符号链接中的目录自然也找不到了。<br>这个问题其实使用硬链接就可以解决。硬链接相当于将目标目录的inode挂在本目录下。那么，既然inode都是一样的，系统根据该inode可以找到bin中的文件，访问路径也就没问题了。</p>
+		<h1 id="Terasort_output_replication">Terasort output replication</h1><hr>
+<p>最近一直在关注TeraSort。<br>有时候你非常关注某些东西是却会忽略其他一些很基本的东西。比如TeraSort，我一直很关注如何Map更快、Shuffle更快、Reduce更快，回来却发现有个空白竟然没关注到，着实吓了一跳。</p>
+<p>回归正题。某一天我一抬头，看到了TeraSort的网络性能图，<br><img src="http://ww4.sinaimg.cn/mw690/79382a93jw1f0dun08ep1j20mn07saab.jpg" alt="两头空白"><br>为什么会是两头空白？好吧，Hadoop为Map任务做了Locality Based处理，Map阶段没有网络流量我能理解。然而，Reduce阶段呢？至少TeraSort会将输出数据写入到HDFS的，说好的3备份直接的数据传递产生的网络流量呢？<br>是不是输出文件的3备份除了问题呢？<br>Hadoop提供了hadoop fsck /FILE-PATH  -files -locations -blocks查看文件块的保存地点及路径。通过查看，果然，TeraSort的输出文件块备份为1。</p>
+<p>从代码中找找确认一下。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">job.getConfiguration().setInt(<span class="string">"dfs.replication"</span>, getOutputReplication(job));</span><br><span class="line">    TeraOutputFormat.setFinalSync(job, <span class="keyword">true</span>);</span><br></pre></td></tr></table></figure></p>
+<p>从上面代码可以看到，TeraSort确实更新了dfs.replication设置，而<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">getOutputReplication</span><span class="params">(JobContext job)</span> </span>&#123;</span><br><span class="line">   <span class="keyword">return</span> job.getConfiguration().getInt(OUTPUT_REPLICATION, <span class="number">1</span>);</span><br><span class="line"> &#125;</span><br><span class="line"> ......</span><br><span class="line"> <span class="keyword">static</span> String OUTPUT_REPLICATION = <span class="string">"mapreduce.terasort.output.replication"</span>;</span><br></pre></td></tr></table></figure></p>
+<p>如果mapreduce.terasort.output.replication设置成3从命令行传入，期待的网络流量出来了。<br><img src="http://ww3.sinaimg.cn/mw690/79382a93jw1f0dun0r5cjj20mm07smxk.jpg" alt="找回reduce流量"><br>应该是TeraSort觉得输出数据不重要不需要多备份吧。</p>
+<p>有时候，太关注一些事情时，会让你忽略掉其他的很多信息。</p>
   
 	</div>
 		<footer class="article-footer clearfix">
@@ -124,7 +127,7 @@
 
 	<div class="article-share" id="share">
 	
-	  <div data-url="http://chongk-t.github.io/2016/01/26/chroot/" data-title="Coding Thoughts" data-tsina="null" class="share clearfix">
+	  <div data-url="http://chongk-t.github.io/2016/01/27/TeraSort-output-replication/" data-title="Coding Thoughts" data-tsina="null" class="share clearfix">
 	  </div>
 	
 	</div>
@@ -137,19 +140,11 @@
 	
 <nav class="article-nav clearfix">
  
- <div class="prev" >
- <a href="/2016/01/27/TeraSort-output-replication/" title="">
-  <strong>上一篇：</strong><br/>
-  <span>
-  (no title)</span>
-</a>
-</div>
-
 
 <div class="next">
-<a href="/2016/01/22/NodeManagerResourceReport/"  title="NodeManager资源注册">
+<a href="/2016/01/26/chroot/"  title="">
  <strong>下一篇：</strong><br/> 
- <span>NodeManager资源注册
+ <span>(no title)
 </span>
 </a>
 </div>
@@ -170,7 +165,7 @@
   <div id="toc" class="toc-aside">
   <strong class="toc-title">文章目录</strong>
  
- <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#聊聊chroot"><span class="toc-number">1.</span> <span class="toc-text">聊聊chroot</span></a></li></ol>
+ <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Terasort_output_replication"><span class="toc-number">1.</span> <span class="toc-text">Terasort output replication</span></a></li></ol>
  
   </div>
 
